@@ -251,7 +251,7 @@ Respond ONLY with a valid JSON object matching exactly this structure (no markdo
 
         try:
             response = await self.client.chat.completions.create(
-                model='google/gemini-2.0-flash-lite:free',
+                model='google/gemini-2.0-flash-exp:free',
                 messages=[
                     {"role": "system", "content": "You are a precise JSON Web Scraper AI. Always reply in valid JSON without markdown."},
                     {"role": "user", "content": prompt}
