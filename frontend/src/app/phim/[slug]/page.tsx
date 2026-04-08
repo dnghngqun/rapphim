@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Movie, Episode } from '@/lib/api';
 import VideoPlayer from '@/components/VideoPlayer';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_BASE = '/api';
 
 function stripHtml(html: string): string {
   return html?.replace(/<[^>]*>/g, '') || '';
@@ -30,23 +30,21 @@ export default function MovieDetailPage() {
         if (data.status) {
           setMovie(data.movie);
           setEpisodes(data.episodes || []);
-          // Auto-play first episode
+          // Only pre-select the episode (highlight it), do NOT auto-load the player
           if (data.episodes?.length > 0) {
-            let epToPlay = data.episodes[0];
+            let epToSelect = data.episodes[0];
 
             try {
               const historyContext = JSON.parse(localStorage.getItem('movie_history') || '{}');
               if (historyContext[slug] && historyContext[slug].episodeId) {
                 const epId = historyContext[slug].episodeId;
                 const foundEp = data.episodes.find((e: Episode) => e.id === epId);
-                if (foundEp) epToPlay = foundEp;
+                if (foundEp) epToSelect = foundEp;
               }
             } catch(e) {}
 
-            setSelectedEp(epToPlay);
-            if (epToPlay.servers?.length > 0) {
-              setEmbedUrl(epToPlay.servers[0].m3u8_url || epToPlay.servers[0].embed_url);
-            }
+            setSelectedEp(epToSelect);
+            // Don't set embedUrl here — wait for user to click play
           }
         }
         setLoading(false);
@@ -186,9 +184,9 @@ export default function MovieDetailPage() {
               <div style={{ marginTop: 20 }}>
                 <button
                   className="btn btn-primary"
-                  onClick={() => handleEpisodeClick(episodes[0])}
+                  onClick={() => handleEpisodeClick(selectedEp || episodes[0])}
                 >
-                  ▶ Xem Phim
+                  ▶ {selectedEp && selectedEp.id !== episodes[0].id ? 'Tiếp Tục Xem' : 'Xem Phim'}
                 </button>
               </div>
             )}
