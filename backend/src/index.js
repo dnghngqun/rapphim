@@ -11,6 +11,7 @@ const { pool } = require('./config/database');
 const { startScraperJob } = require('./jobs/scraperJob');
 
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.BACKEND_PORT || 4000;
 
 // ============================================================
