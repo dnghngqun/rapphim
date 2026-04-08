@@ -1,0 +1,28 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Docker database volumes
+pgdata/
+docker-data/
+
+# Log files
+*.log
+logs/
+
+# IDE and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Project folders (handled by inner .gitignores but good practice to explicitly define ignored build/env folders globally)
+node_modules/
+venv/
+__pycache__/
+
+# AI Assistant artifacts
+.gemini/

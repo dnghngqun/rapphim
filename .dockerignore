@@ -1,0 +1,6 @@
+node_modules
+.next
+.env
+backend/node_modules
+scraper/__pycache__
+scraper/sources/__pycache__
