@@ -110,7 +110,8 @@ CREATE TABLE IF NOT EXISTS episode_servers (
     quality VARCHAR(20),
     is_working BOOLEAN DEFAULT TRUE,
     last_checked TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(episode_id, server_name)
 );
 
 -- Bảng crawl history
