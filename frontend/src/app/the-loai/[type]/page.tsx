@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import MovieCard from '@/components/MovieCard';
+import Pagination from '@/components/Pagination';
 import { Movie } from '@/lib/api';
 
 const API_BASE = '/api';
@@ -59,6 +59,9 @@ export default function TypePage() {
     router.push(`/the-loai/${type}?page=1${val ? `&year=${val}` : ''}`);
   };
 
+  const buildHref = (p: number) =>
+    `/the-loai/${type}?page=${p}${selectedYear ? `&year=${selectedYear}` : ''}`;
+
   return (
     <section className="section" style={{ marginTop: 64, minHeight: '60vh' }}>
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
@@ -69,7 +72,7 @@ export default function TypePage() {
           <select 
             value={selectedYear} 
             onChange={handleYearChange}
-            style={{ padding: '8px 12px', borderRadius: '4px', background: 'var(--card-bg)', color: 'var(--text)', border: '1px solid var(--border)' }}
+            style={{ padding: '8px 12px', borderRadius: '4px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
           >
             <option value="">Tất cả các năm</option>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -84,23 +87,11 @@ export default function TypePage() {
       ) : (
         <>
           <div className="movie-grid">{movies.map(m => <MovieCard key={m.id} movie={m} />)}</div>
-          {totalPages > 1 && (
-            <div className="pagination">
-              {page > 1 && <Link href={`/the-loai/${type}?page=${page - 1}${selectedYear ? `&year=${selectedYear}` : ''}`}>← Trước</Link>}
-              {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => {
-                // simple pagination logic around current page conceptually
-                let p = i + 1;
-                if (totalPages > 10) {
-                  p = Math.max(1, page - 4) + i;
-                  if (p > totalPages) p = totalPages - 9 + i;
-                }
-                return (
-                  <Link key={p} href={`/the-loai/${type}?page=${p}${selectedYear ? `&year=${selectedYear}` : ''}`} className={p === page ? 'active' : ''}>{p}</Link>
-                );
-              })}
-              {page < totalPages && <Link href={`/the-loai/${type}?page=${page + 1}${selectedYear ? `&year=${selectedYear}` : ''}`}>Sau →</Link>}
-            </div>
-          )}
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            buildHref={buildHref}
+          />
         </>
       )}
     </section>

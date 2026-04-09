@@ -23,13 +23,27 @@ function startScraperJob() {
     runScraper(['verify', '--batch-size', '500']);
   });
 
-  logger.info(`📅 Scheduler: full crawl every ${INTERVAL}min, discover every 6h, verify every 12h`);
+  // Cập nhật phim theo dõi đặc biệt mỗi ngày lúc 2:00 sáng (sau full crawl)
+  // Script này check TẤT CẢ nguồn (OPhim, KKPhim, NguonPhim...) cho từng phim trong tracked_movies.json
+  cron.schedule('0 2 * * *', () => {
+    logger.info('🎯 Tracked movies update trigger (every day at 2am) - updating from ALL sources...');
+    runScraper(['track-update']);
+  });
 
-  // Chạy Khám phá nguồn bằng AI ngay khi khởi động, sau đó Crawl (đợi 10s cho DB DB)
+  logger.info(`📅 Scheduler: full crawl @ midnight, discover every 6h, verify every 12h, tracked-movies update @ 2am`);
+
+  // Chạy Khám phá nguồn bằng AI ngay khi khởi động, sau đó Crawl (đợi 10s cho DB)
   setTimeout(() => {
     logger.info(`⚡ Initial startup - Running AI Discovery AND then crawling ALL sources...`);
     runScraper(['discover-and-crawl']);
   }, 10000);
+
+  // Chạy track-update khi startup (sau 5 phút để không đụng với discover-and-crawl)
+  setTimeout(() => {
+    logger.info(`🎯 Initial startup - Running tracked movies update from ALL sources...`);
+    runScraper(['track-update']);
+  }, 5 * 60 * 1000);
 }
 
 module.exports = { startScraperJob };
+

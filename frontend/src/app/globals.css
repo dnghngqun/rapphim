@@ -845,6 +845,126 @@ img {
 }
 
 /* ============================================= */
+/* Navbar Scrolled State */
+/* ============================================= */
+.navbar-scrolled {
+  background: rgba(10, 10, 15, 0.97) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================= */
+/* Search Suggestions */
+/* ============================================= */
+.search-wrapper {
+  flex: 1;
+  max-width: 400px;
+  position: relative;
+}
+
+.search-wrapper .search-bar {
+  flex: 1;
+  max-width: 100%;
+  width: 100%;
+}
+
+.search-loading {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(124, 92, 252, 0.15);
+  z-index: 200;
+  overflow: hidden;
+  animation: suggestionIn 0.15s ease;
+}
+
+@keyframes suggestionIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.suggestion-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.suggestion-thumb {
+  width: 48px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+}
+
+.suggestion-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  background: var(--bg-secondary);
+}
+
+.suggestion-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.suggestion-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.suggestion-see-all {
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  color: var(--accent-light);
+  text-align: center;
+  cursor: pointer;
+  border-top: 1px solid var(--border-color);
+  transition: background 0.15s;
+}
+
+.suggestion-see-all:hover {
+  background: var(--accent-glow);
+}
+
+/* ============================================= */
 /* Pagination */
 /* ============================================= */
 .pagination {
@@ -853,6 +973,7 @@ img {
   align-items: center;
   gap: 6px;
   margin-top: 40px;
+  flex-wrap: wrap;
 }
 
 .pagination a,
@@ -883,6 +1004,33 @@ img {
   color: white;
 }
 
+.pagination-dots {
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  min-width: 24px !important;
+  padding: 0 !important;
+}
+
+.pagination-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.pagination-info {
+  font-weight: 600;
+  color: var(--text-primary) !important;
+  min-width: auto !important;
+  padding: 0 16px !important;
+}
+
+/* Desktop: full pagination visible, compact hidden */
+.pagination-desktop { display: flex; }
+.pagination-mobile  { display: none; }
+
+
+
 /* ============================================= */
 /* Responsive */
 /* ============================================= */
@@ -910,7 +1058,11 @@ img {
     justify-content: center; 
   }
   .footer-inner { grid-template-columns: 1fr; gap: 24px; }
-  .search-bar { max-width: 200px; }
+  .search-wrapper { max-width: 200px; }
+  .search-bar { max-width: 100%; }
+  /* Switch to compact pagination on tablet */
+  .pagination-desktop { display: none; }
+  .pagination-mobile  { display: flex; gap: 10px; }
 }
 
 @media (max-width: 480px) {
@@ -918,7 +1070,8 @@ img {
   .hero-title { font-size: 1.2rem; }
   .navbar-inner { padding: 0 12px; gap: 10px; }
   .logo { font-size: 1.3rem; }
-  .search-bar { max-width: 150px; }
+  .search-wrapper { max-width: 140px; }
+  .search-bar { max-width: 100%; }
   .search-bar input { padding-left: 36px; padding-right: 12px; }
   .section { padding: 24px 12px; }
   .detail-content { padding: 30px 12px 20px; }

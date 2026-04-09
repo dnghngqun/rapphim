@@ -21,6 +21,7 @@ from sources.base import _write_crawl_log
 from sources.dynamic_source import DynamicOPhimSource
 from ai_researcher import AIResearcher
 from verifier import LinkVerifier
+from find_and_track_movies import cmd_import as _track_import, cmd_update as _track_update
 
 console = Console()
 
@@ -191,6 +192,20 @@ async def _stats():
 
     finally:
         await db.close()
+
+
+@cli.command(name='track-import')
+def track_import():
+    """Find and import tracked movies from ALL sources (run once)."""
+    console.print("\n[bold magenta]🎬 Importing tracked movies from all sources...[/bold magenta]")
+    asyncio.run(_track_import())
+
+
+@cli.command(name='track-update')
+def track_update():
+    """Daily update for tracked movies that are not yet completed (used by cron)."""
+    console.print("\n[bold cyan]🔄 Running daily update for tracked movies...[/bold cyan]")
+    asyncio.run(_track_update())
 
 
 if __name__ == '__main__':
