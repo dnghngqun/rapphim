@@ -1,19 +1,26 @@
 const { pool } = require('../config/database');
 
+const removeVietnameseTones = (str) => {
+  return str
+    .normalize('NFD') // Chuẩn hóa Unicode
+    .replace(/[\u0300-\u036f]/g, '') // Xóa các dấu
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D'); // Chữ đ/Đ
+};
+
 // ============================================================
 // Movies Controller
 // ============================================================
 
 /**
  * GET /api/movies
- * Query params: page, limit, type, genre, country, year, sort
+ * Query params: page, limit, type, genre, country, year, sort, search
  */
 async function getMovies(req, res) {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 24));
     const offset = (page - 1) * limit;
-    const { type, genre, country, year, sort } = req.query;
+    const { type, genre, country, year, sort, search } = req.query;
 
     let query = `
       SELECT m.*, 
@@ -47,6 +54,15 @@ async function getMovies(req, res) {
     if (year) {
       conditions.push(`m.year = $${paramIndex++}`);
       params.push(parseInt(year));
+    }
+    if (search) {
+      const searchStrTrim = search.trim();
+      const likeSearchStr = `%${searchStrTrim}%`;
+      const normalizedSlug = removeVietnameseTones(searchStrTrim).replace(/\s+/g, '-').toLowerCase().replace(/y/g, 'i');
+      const slugSearchStr = `%${normalizedSlug}%`;
+      conditions.push(`(m.title ILIKE $${paramIndex} OR m.original_title ILIKE $${paramIndex} OR REPLACE(m.slug, 'y', 'i') ILIKE $${paramIndex + 1})`);
+      params.push(likeSearchStr, slugSearchStr);
+      paramIndex += 2;
     }
 
     if (conditions.length > 0) {
@@ -86,6 +102,16 @@ async function getMovies(req, res) {
       countConditions.push(`c.slug = $${cpi++}`); countParams.push(country);
     }
     if (year) { countConditions.push(`m.year = $${cpi++}`); countParams.push(parseInt(year)); }
+    if (search) {
+      const searchStrTrim = search.trim();
+      const likeSearchStr = `%${searchStrTrim}%`;
+      const normalizedSlug = removeVietnameseTones(searchStrTrim).replace(/\s+/g, '-').toLowerCase().replace(/y/g, 'i');
+      const slugSearchStr = `%${normalizedSlug}%`;
+      countConditions.push(`(m.title ILIKE $${cpi} OR m.original_title ILIKE $${cpi} OR REPLACE(m.slug, 'y', 'i') ILIKE $${cpi + 1})`);
+      countParams.push(likeSearchStr, slugSearchStr);
+      cpi += 2;
+    }
+    
     if (countConditions.length > 0) countQuery += ' WHERE ' + countConditions.join(' AND ');
 
     const [moviesResult, countResult] = await Promise.all([
