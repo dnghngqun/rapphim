@@ -9,6 +9,7 @@ Usage:
 import asyncio
 import sys
 import click
+import httpx
 from rich.console import Console
 from rich.table import Table
 
@@ -106,6 +107,17 @@ async def _crawl(source_name, mode, max_pages):
 
         console.print("\n" + "=" * 60)
         console.print(f"[bold green]✓ Total: found={total_found}, new={total_new}, updated={total_updated}[/bold green]")
+
+        # TRIGGER BACKEND CACHE CLEAR
+        if total_new > 0 or total_updated > 0:
+            console.print("[dim]🔄 Triggering backend cache invalidation...[/dim]")
+            try:
+                # We use http://backend:5000 because they run in the same docker-compose network
+                async with httpx.AsyncClient() as client:
+                    await client.post('http://backend:5000/api/scraper/clear-cache', timeout=5.0)
+                console.print("[bold green]✓ Backend cache cleared successfully[/bold green]")
+            except Exception as e:
+                console.print(f"[dim yellow]⚠ Could not clear backend cache automatically: {e}[/dim yellow]")
 
         # Ghi file log txt
         log_file = _write_crawl_log(session_start, all_results)

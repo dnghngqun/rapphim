@@ -45,4 +45,16 @@ const cacheMiddleware = (ttlMinutes = 5) => {
   };
 };
 
-module.exports = cacheMiddleware;
+const clearCachePattern = async (pattern) => {
+  try {
+    const keys = await redis.keys(pattern);
+    if (keys.length > 0) {
+      await redis.del(keys);
+      logger.info(`🧹 Cleared ${keys.length} cache keys matching ${pattern}`);
+    }
+  } catch (err) {
+    logger.error('Failed to clear cache: ' + err.message);
+  }
+};
+
+module.exports = { cacheMiddleware, clearCachePattern };

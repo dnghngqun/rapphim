@@ -678,6 +678,17 @@ async def cmd_update():
         save_tracked(tracked)
         console.print(f"\n[bold green]✓ Update done. {total_updated} source(s) refreshed.[/bold green]")
 
+        # TRIGGER BACKEND CACHE CLEAR
+        if total_updated > 0:
+            console.print("[dim]🔄 Triggering backend cache invalidation...[/dim]")
+            try:
+                # Dùng http://backend:5000 do cùng nằm trong network docker-compose
+                async with httpx.AsyncClient() as client:
+                    await client.post('http://backend:5000/api/scraper/clear-cache', timeout=5.0)
+                console.print("[bold green]✓ Backend cache cleared successfully[/bold green]")
+            except Exception as e:
+                console.print(f"[dim yellow]⚠ Could not clear backend cache automatically: {e}[/dim yellow]")
+
     finally:
         if ai_client:
             await ai_client.close()
