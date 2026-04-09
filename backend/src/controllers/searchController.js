@@ -22,8 +22,6 @@ async function searchMovies(req, res) {
     
     const exactSearchTerm = searchTerm;
     const likeSearchTerm = `%${searchTerm}%`;
-    const normalizedSlug = removeVietnameseTones(searchTerm).replace(/\s+/g, '-').toLowerCase().replace(/y/g, 'i');
-    const slugSearchTerm = `%${normalizedSlug}%`;
 
     const result = await pool.query(`
       SELECT m.*,
@@ -35,27 +33,22 @@ async function searchMovies(req, res) {
       LEFT JOIN movie_countries mc ON m.id = mc.movie_id
       LEFT JOIN countries c ON mc.country_id = c.id
       WHERE 
-        m.title ILIKE $1
-        OR m.original_title ILIKE $1
-        OR REPLACE(m.slug, 'y', 'i') ILIKE $2
+        m.title ILIKE $1 OR m.original_title ILIKE $1
       GROUP BY m.id
       ORDER BY 
         CASE 
-          WHEN m.title ILIKE $3 OR m.original_title ILIKE $3 THEN 1
-          WHEN m.title ILIKE $1 OR m.original_title ILIKE $1 THEN 2
-          ELSE 3
+          WHEN m.title ILIKE $2 OR m.original_title ILIKE $2 THEN 1
+          ELSE 2
         END,
         m.updated_at DESC
-      LIMIT $4 OFFSET $5
-    `, [likeSearchTerm, slugSearchTerm, exactSearchTerm, limit, offset]);
+      LIMIT $3 OFFSET $4
+    `, [likeSearchTerm, exactSearchTerm, limit, offset]);
 
     const countResult = await pool.query(`
       SELECT COUNT(DISTINCT m.id) FROM movies m
       WHERE 
-        m.title ILIKE $1
-        OR m.original_title ILIKE $1
-        OR REPLACE(m.slug, 'y', 'i') ILIKE $2
-    `, [likeSearchTerm, slugSearchTerm]);
+        m.title ILIKE $1 OR m.original_title ILIKE $1
+    `, [likeSearchTerm]);
 
     const totalItems = parseInt(countResult.rows[0].count);
     res.json({

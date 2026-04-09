@@ -30,15 +30,30 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Click outside to close suggestions
+  // Click outside and touch outside to close suggestions
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: MouseEvent | TouchEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setShowSuggestions(false);
+        inputRef.current?.blur();
       }
     };
+    
+    // Listen for window scroll to aggressively close the popup when scrolling the page
+    const handleScroll = () => {
+      setShowSuggestions(false);
+      inputRef.current?.blur();
+    };
+
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   // Debounced search suggestions
