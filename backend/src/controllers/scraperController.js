@@ -3,65 +3,90 @@ const path = require('path');
 const { pool } = require('../config/database');
 const logger = require('../utils/logger');
 
-let scraperProcess = null;
-let isRunning = false;
-let lastRun = null;
-let lastResult = null;
-let currentLogs = [];
-
 const SCRAPER_DIR = path.resolve(__dirname, '../../../scraper');
 
-function runScraper(args = []) {
-  if (isRunning) {
-    return { success: false, message: 'Scraper is already running' };
+// Job states mapped by jobKey
+// Structure: activeJobs[jobKey] = { isRunning: boolean, lastRun: Date, lastResult: string, logs: array, process: child_process }
+const activeJobs = new Map();
+
+function getJobState(jobKey) {
+  if (!activeJobs.has(jobKey)) {
+    activeJobs.set(jobKey, {
+      isRunning: false,
+      lastRun: null,
+      lastResult: null,
+      logs: [],
+      process: null
+    });
+  }
+  return activeJobs.get(jobKey);
+}
+
+// Trả về promise để vòng lặp có thể chờ tiến trình kết thúc
+function runScraper(jobKey, args = []) {
+  const state = getJobState(jobKey);
+
+  if (state.isRunning) {
+    logger.warn(`⚠️ Bỏ qua lệnh: Scraper job '${jobKey}' đang chạy rồi.`);
+    return Promise.resolve({ success: false, message: 'Scraper is already running' });
   }
 
-  isRunning = true;
-  currentLogs = [];
+  state.isRunning = true;
+  state.logs = [];
   const startTime = new Date();
 
-  logger.info(`🚀 Starting scraper with args: ${args.join(' ')}`);
+  logger.info(`🚀 Khởi động Scraper Job: [${jobKey}] với args: ${args.join(' ')}`);
 
   const PYTHON_BIN = process.env.PYTHON_BIN || 'python';
-  scraperProcess = spawn(PYTHON_BIN, ['-u', 'main.py', ...args], {
+  state.process = spawn(PYTHON_BIN, ['-u', 'main.py', ...args], {
     cwd: SCRAPER_DIR,
     env: { ...process.env, PYTHONUNBUFFERED: '1' },
     shell: true,
   });
 
-  scraperProcess.stdout.on('data', (data) => {
+  state.process.stdout.on('data', (data) => {
     const msg = data.toString().trim();
     if (msg) {
-      currentLogs.push({ time: new Date().toISOString(), level: 'info', message: msg });
-      logger.info(`[Scraper] ${msg}`);
+      state.logs.push({ time: new Date().toISOString(), level: 'info', message: msg });
+      if (state.logs.length > 500) state.logs.shift(); // Chống Memory leak khi chạy nhiều ngày
+      logger.info(`[${jobKey}] ${msg}`);
     }
   });
 
-  scraperProcess.stderr.on('data', (data) => {
+  state.process.stderr.on('data', (data) => {
     const msg = data.toString().trim();
     if (msg) {
-      currentLogs.push({ time: new Date().toISOString(), level: 'error', message: msg });
-      logger.error(`[Scraper] ${msg}`);
+      state.logs.push({ time: new Date().toISOString(), level: 'error', message: msg });
+      if (state.logs.length > 500) state.logs.shift();
+      logger.error(`[${jobKey}] ${msg}`);
     }
   });
 
-  scraperProcess.on('close', (code) => {
-    isRunning = false;
-    lastRun = new Date();
-    lastResult = code === 0 ? 'success' : `failed (code: ${code})`;
-    scraperProcess = null;
-    logger.info(`Scraper finished: ${lastResult} (duration: ${((lastRun - startTime) / 1000).toFixed(1)}s)`);
-  });
+  return new Promise((resolve) => {
+    state.process.on('close', (code) => {
+      state.isRunning = false;
+      state.lastRun = new Date();
+      state.lastResult = code === 0 ? 'success' : `failed (code: ${code})`;
+      state.process = null;
+      logger.info(`✅ Scraper job [${jobKey}] kết thúc: ${state.lastResult} (thời gian: ${((state.lastRun - startTime) / 1000).toFixed(1)}s)`);
+      resolve({ success: code === 0, code });
+    });
 
-  scraperProcess.on('error', (err) => {
-    isRunning = false;
-    lastRun = new Date();
-    lastResult = `error: ${err.message}`;
-    scraperProcess = null;
-    logger.error(`Scraper error: ${err.message}`);
+    state.process.on('error', (err) => {
+      state.isRunning = false;
+      state.lastRun = new Date();
+      state.lastResult = `error: ${err.message}`;
+      state.process = null;
+      logger.error(`❌ Scraper job [${jobKey}] LỖI: ${err.message}`);
+      resolve({ success: false, error: err.message });
+    });
   });
+}
 
-  return { success: true, message: 'Scraper started' };
+function spawnScraperAsync(jobKey, args = []) {
+  // Fire and forget cho API call
+  runScraper(jobKey, args).catch(err => logger.error(`Error in async job ${jobKey}: ${err}`));
+  return { success: true, message: `Scraper job '${jobKey}' started` };
 }
 
 /** POST /api/scraper/trigger */
@@ -69,19 +94,41 @@ async function triggerScraper(req, res) {
   const { source = 'all', mode = 'incremental', pages } = req.body || {};
   const args = ['crawl', '--source', source, '--mode', mode];
   if (pages) args.push('--pages', String(pages));
+  
+  const jobKey = `manual_${mode}`; // user manually trigger from admin panel
+  const state = getJobState(jobKey);
+  if (state.isRunning) {
+    return res.json({ status: false, message: 'Scraper is already running' });
+  }
 
-  const result = runScraper(args);
+  const result = spawnScraperAsync(jobKey, args);
   res.json({ status: result.success, ...result });
 }
 
 /** GET /api/scraper/status */
 async function getScraperStatus(req, res) {
+  const statusObj = {};
+  let anyRunning = false;
+  let allLogs = [];
+
+  for (const [key, state] of activeJobs.entries()) {
+    statusObj[key] = {
+      isRunning: state.isRunning,
+      lastRun: state.lastRun ? state.lastRun.toISOString() : null,
+      lastResult: state.lastResult,
+      recentLogs: state.logs.slice(-10),
+    };
+    if (state.isRunning) anyRunning = true;
+    allLogs = allLogs.concat(state.logs.slice(-10));
+  }
+  
+  allLogs.sort((a,b) => new Date(a.time) - new Date(b.time));
+
   res.json({
     status: true,
-    isRunning,
-    lastRun: lastRun ? lastRun.toISOString() : null,
-    lastResult,
-    recentLogs: currentLogs.slice(-50),
+    isRunning: anyRunning, // Backward compatibility
+    jobs: statusObj,
+    recentLogs: allLogs.slice(-50), // Backward compatibility
   });
 }
 
@@ -118,14 +165,12 @@ async function getScraperStats(req, res) {
 
 /** POST /api/scraper/discover */
 async function discoverSources(req, res) {
-  const result = runScraper(['discover']);
+  const result = spawnScraperAsync('manual_discover', ['discover']);
   res.json({ status: result.success, ...result });
 }
 
 /**
  * POST /api/scraper/enrich
- * Body: { mode: "all"|"tracked"|"slug", slug?: string, limit?: number }
- * Tìm nguồn dự phòng cho phim đã có trong DB.
  */
 async function enrichSources(req, res) {
   const { mode = 'tracked', slug = '', limit = 200 } = req.body || {};
@@ -141,13 +186,12 @@ async function enrichSources(req, res) {
   if (mode === 'all')  args.push(String(limit));
   if (mode === 'slug') args.push(slug);
 
-  const result = runScraper(args);
+  const result = spawnScraperAsync(`manual_enrich_${mode}`, args);
   res.json({ status: result.success, mode, ...result });
 }
 
 module.exports = {
   triggerScraper, getScraperStatus, getScraperStats,
   discoverSources, enrichSources,
-  runScraper, isRunning: () => isRunning,
+  runScraper, spawnScraperAsync
 };
-
