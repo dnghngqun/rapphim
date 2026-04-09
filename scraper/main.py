@@ -22,6 +22,7 @@ from sources.dynamic_source import DynamicOPhimSource
 from ai_researcher import AIResearcher
 from verifier import LinkVerifier
 from find_and_track_movies import cmd_import as _track_import, cmd_update as _track_update
+from enrich_sources import cmd_enrich_all, cmd_enrich_tracked, cmd_enrich_slug
 
 console = Console()
 
@@ -206,6 +207,33 @@ def track_update():
     """Daily update for tracked movies that are not yet completed (used by cron)."""
     console.print("\n[bold cyan]🔄 Running daily update for tracked movies...[/bold cyan]")
     asyncio.run(_track_update())
+
+
+@cli.command(name='enrich-sources')
+@click.argument('mode', default='tracked', type=click.Choice(['all', 'tracked', 'slug']))
+@click.argument('slug_or_limit', default='', required=False)
+def enrich_sources(mode: str, slug_or_limit: str):
+    """
+    Find backup sources for movies already in DB.
+
+    MODE:
+      all      — Scan all movies in DB (provide optional limit: enrich-sources all 100)
+      tracked  — Only scan TRACKED_MOVIES list
+      slug     — Scan one specific movie (provide slug: enrich-sources slug fairy-tail)
+
+    Example: python main.py enrich-sources tracked
+    """
+    console.print(f"\n[bold magenta]🌐 Source Enrichment — mode={mode}[/bold magenta]")
+    if mode == 'all':
+        limit = int(slug_or_limit) if slug_or_limit.isdigit() else 200
+        asyncio.run(cmd_enrich_all(limit=limit))
+    elif mode == 'tracked':
+        asyncio.run(cmd_enrich_tracked())
+    elif mode == 'slug':
+        if not slug_or_limit:
+            console.print("[red]Please provide a slug: enrich-sources slug <slug>[/red]")
+            return
+        asyncio.run(cmd_enrich_slug(slug_or_limit))
 
 
 if __name__ == '__main__':

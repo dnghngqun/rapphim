@@ -122,4 +122,32 @@ async function discoverSources(req, res) {
   res.json({ status: result.success, ...result });
 }
 
-module.exports = { triggerScraper, getScraperStatus, getScraperStats, discoverSources, runScraper, isRunning: () => isRunning };
+/**
+ * POST /api/scraper/enrich
+ * Body: { mode: "all"|"tracked"|"slug", slug?: string, limit?: number }
+ * Tìm nguồn dự phòng cho phim đã có trong DB.
+ */
+async function enrichSources(req, res) {
+  const { mode = 'tracked', slug = '', limit = 200 } = req.body || {};
+
+  if (!['all', 'tracked', 'slug'].includes(mode)) {
+    return res.status(400).json({ status: false, error: 'mode must be all | tracked | slug' });
+  }
+  if (mode === 'slug' && !slug) {
+    return res.status(400).json({ status: false, error: 'slug is required when mode=slug' });
+  }
+
+  const args = ['enrich-sources', mode];
+  if (mode === 'all')  args.push(String(limit));
+  if (mode === 'slug') args.push(slug);
+
+  const result = runScraper(args);
+  res.json({ status: result.success, mode, ...result });
+}
+
+module.exports = {
+  triggerScraper, getScraperStatus, getScraperStats,
+  discoverSources, enrichSources,
+  runScraper, isRunning: () => isRunning,
+};
+

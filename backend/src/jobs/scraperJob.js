@@ -2,8 +2,6 @@ const cron = require('node-cron');
 const logger = require('../utils/logger');
 const { runScraper } = require('../controllers/scraperController');
 
-const INTERVAL = process.env.SCRAPER_INTERVAL_MINUTES || 30;
-
 function startScraperJob() {
   // Mỗi ngày lúc 0:00: crawl full TẤT CẢ các trang từ mọi nguồn
   cron.schedule('0 0 * * *', () => {
@@ -23,27 +21,59 @@ function startScraperJob() {
     runScraper(['verify', '--batch-size', '500']);
   });
 
-  // Cập nhật phim theo dõi đặc biệt mỗi ngày lúc 2:00 sáng (sau full crawl)
-  // Script này check TẤT CẢ nguồn (OPhim, KKPhim, NguonPhim...) cho từng phim trong tracked_movies.json
+  // Cập nhật phim theo dõi đặc biệt mỗi ngày lúc 2:00 sáng
+  // Check TẤT CẢ nguồn (OPhim, KKPhim, NguonPhim + AI web search) cho từng phim
+  // Nếu response không phải dạng OPhim → AI normalize về schema của mình
   cron.schedule('0 2 * * *', () => {
-    logger.info('🎯 Tracked movies update trigger (every day at 2am) - updating from ALL sources...');
+    logger.info('🎯 Tracked movies update (2am) - updating from ALL sources, AI normalize any format...');
     runScraper(['track-update']);
   });
 
-  logger.info(`📅 Scheduler: full crawl @ midnight, discover every 6h, verify every 12h, tracked-movies update @ 2am`);
+  // Tìm nguồn dự phòng cho phim đã có — Chủ Nhật 3:00 AM
+  // Mỗi phim sẽ được tìm thêm nguồn (OPhim/KKPhim/NguonPhim + AI web)
+  // để user có thể chọn nguồn khác khi nguồn chính bị lag/down
+  cron.schedule('0 3 * * 0', () => {
+    logger.info('🌐 Source enrichment (Sunday 3am) - finding backup sources for all movies...');
+    runScraper(['enrich-sources', 'all']);
+  });
 
-  // Chạy Khám phá nguồn bằng AI ngay khi khởi động, sau đó Crawl (đợi 10s cho DB)
+  // Enrich nguồn dự phòng cho tracked movies — mỗi 2 ngày lúc 3:30 AM
+  // Ưu tiên phim trong danh sách theo dõi đặc biệt
+  cron.schedule('30 3 */2 * *', () => {
+    logger.info('🌐 Source enrichment - tracked movies (every 2 days at 3:30am)...');
+    runScraper(['enrich-sources', 'tracked']);
+  });
+
+  logger.info([
+    '📅 Scheduler configured:',
+    '  - Full crawl: every day at 00:00',
+    '  - AI discover + crawl: every 6 hours',
+    '  - Link verify: every 12 hours',
+    '  - Tracked movies update (AI normalize): daily at 02:00',
+    '  - Source enrichment (backup sources): Sundays at 03:00',
+    '  - Tracked enrichment: every 2 days at 03:30',
+  ].join('\n'));
+
+  // ── Startup jobs ──────────────────────────────────────────────────────
+  // AI discover + crawl ngay khi khởi động
   setTimeout(() => {
-    logger.info(`⚡ Initial startup - Running AI Discovery AND then crawling ALL sources...`);
+    logger.info('⚡ Startup: AI Discovery + crawl all sources...');
     runScraper(['discover-and-crawl']);
-  }, 10000);
+  }, 10_000);
 
-  // Chạy track-update khi startup (sau 5 phút để không đụng với discover-and-crawl)
+  // track-update sau 5 phút (không đụng với discover-and-crawl)
   setTimeout(() => {
-    logger.info(`🎯 Initial startup - Running tracked movies update from ALL sources...`);
+    logger.info('🎯 Startup: tracked movies update from ALL sources...');
     runScraper(['track-update']);
   }, 5 * 60 * 1000);
+
+  // enrich tracked movies sau 30 phút
+  setTimeout(() => {
+    logger.info('🌐 Startup: source enrichment for tracked movies...');
+    runScraper(['enrich-sources', 'tracked']);
+  }, 30 * 60 * 1000);
 }
 
 module.exports = { startScraperJob };
+
 
