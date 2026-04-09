@@ -1,15 +1,14 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import MovieCard from '@/components/MovieCard';
 import Pagination from '@/components/Pagination';
 import { Movie } from '@/lib/api';
 
 const API_BASE = '/api';
 
-export default function PhimMoiPage() {
+function PhimMoiContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const page = parseInt(searchParams.get('page') || '1');
 
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -33,7 +32,7 @@ export default function PhimMoiPage() {
   const buildHref = (p: number) => `/danh-sach/phim-moi?page=${p}`;
 
   return (
-    <section className="section" style={{ marginTop: 64, minHeight: '60vh' }}>
+    <>
       <div className="section-header">
         <h1 className="section-title">
           🌟 Phim Mới Cập Nhật
@@ -65,6 +64,21 @@ export default function PhimMoiPage() {
           />
         </>
       )}
+    </>
+  );
+}
+
+export default function PhimMoiPage() {
+  return (
+    <section className="section" style={{ marginTop: 64, minHeight: '60vh' }}>
+      <Suspense fallback={
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
+          <div className="loading-spinner" />
+        </div>
+      }>
+        <PhimMoiContent />
+      </Suspense>
     </section>
   );
 }
+
