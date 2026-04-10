@@ -94,11 +94,19 @@ async def _crawl(source_name, mode, max_pages):
                 result = await src.crawl(db, max_pages=max_pages, mode=mode)
                 all_results.append(result)
             except Exception as e:
-                console.print(f"[red]Failed: {src.name} - {e}[/red]")
+                error_msg = str(e)
+                console.print(f"[red]Failed: {src.name} - {error_msg}[/red]")
+                
+                # Self-healing: Deactivate AI-discovered sources if they throw structural errors
+                if isinstance(src, DynamicOPhimSource):
+                    if "Expecting value" in error_msg or "missing an 'http://'" in error_msg or "Invalid URL" in error_msg:
+                        console.print(f"[yellow]⚠️ Tự động vô hiệu hóa nguồn lỗi AI-discovered: {src.name}[/yellow]")
+                        await db.pool.execute("UPDATE sources SET is_active = false WHERE name = $1", src.name)
+
                 all_results.append({
                     'source': src.name, 'url': src.base_url,
                     'pages': 0, 'found': 0, 'new': 0, 'updated': 0,
-                    'status': f'error: {e}'
+                    'status': f'error: {error_msg}'
                 })
 
         total_found   = sum(r['found']   for r in all_results)

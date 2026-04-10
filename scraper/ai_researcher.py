@@ -3,7 +3,7 @@ import asyncio
 import json
 import re
 import os
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from rich.console import Console
 import httpx
 
@@ -50,6 +50,10 @@ class AIResearcher:
         "kho phim thuyết minh vietsub api",
         "nguồn phim api việt nam",
         "phim thả ga api",
+        "animevietsub tên miền mới",
+        "trang chủ animevietsub mới nhất",
+        "animevietsub web xem anime",
+        "animevietsub"
     ]
 
     def __init__(self):
@@ -293,10 +297,27 @@ Respond ONLY with a valid JSON object matching exactly this structure (no markdo
         apis = set()
         for pattern in api_patterns:
             matches = re.findall(pattern, html, re.IGNORECASE)
-            apis.update(matches)
+            for m in matches:
+                clean_url = m.strip().replace('\\/', '/')
+                # Fix malformed URLs like https:/.xyz 
+                clean_url = re.sub(r'^https?:/\.([a-z0-9])', r'https://\1', clean_url)
+                clean_url = re.sub(r'^https?:/([^/])', r'https://\1', clean_url)
+                
+                # Resolve relative URLs
+                absolute_url = urljoin(url, clean_url)
+                if absolute_url.startswith(('http://', 'https://')):
+                    apis.add(absolute_url)
 
         if apis:
-            return {'api_url': list(apis)[0], 'all_apis': list(apis)}
+            # Filter out assets that are definitely not JSON APIs
+            valid_apis = []
+            for a in apis:
+                al = a.lower()
+                if not al.endswith('.js') and not al.endswith('.css') and not al.endswith('.png') and not 'platform.js' in al and not 'widget' in al:
+                    valid_apis.append(a)
+                    
+            if valid_apis:
+                return {'api_url': valid_apis[0], 'all_apis': valid_apis}
         return None
 
     async def _generate_config(self, url: str, analysis: dict, api_info: dict | None) -> dict:
