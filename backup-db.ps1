@@ -2,7 +2,7 @@
 # Dùng khi muốn backup toàn bộ DB ra thư mục DataDB
 
 $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
-$backupFile = "D:\Code\code\rapphim\DataDB\rapphim_backup_$timestamp.sql"
+$backupFile = "C:\rapphim\source\rapphim\DataDB\rapphim_backup_$timestamp.sql"
 
 Write-Host "🗄️  Đang backup database..." -ForegroundColor Cyan
 docker exec rapphim-db pg_dump -U rapphim rapphim > $backupFile

@@ -68,7 +68,7 @@ services:
       - SCRAPER_LOG_DIR=/app/scraper/logs
     volumes:
       # Mount thư mục scraper logs ra host để xem file txt trực tiếp
-      - D:/Code/code/rapphim/scraper/logs:/app/scraper/logs
+      - C:/rapphim/source/rapphim/scraper/logs:/app/scraper/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,7 +84,6 @@ services:
     ports:
       - "80:3000"
     environment:
-      - INTERNAL_API_URL=http://backend:4000
     depends_on:
       - backend
     restart: unless-stopped
@@ -101,7 +100,7 @@ services:
       BACKUP_KEEP_MINS: 180  # Giữ các bản backup trong 3 tiếng gần nhất (để tránh đầy ổ)
       BACKUP_KEEP_DAYS: 3    # Đồng thời giữ lại 1 bản backup cho 3 ngày gần nhất
     volumes:
-      - D:/Code/code/rapphim/DataDB:/backups
+      - C:/rapphim/source/rapphim/DataDB:/backups
     depends_on:
       postgres:
         condition: service_healthy
