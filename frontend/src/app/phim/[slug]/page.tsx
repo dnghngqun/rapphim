@@ -41,7 +41,7 @@ export default function MovieDetailPage() {
                 const foundEp = data.episodes.find((e: Episode) => e.id === epId);
                 if (foundEp) epToSelect = foundEp;
               }
-            } catch(e) {}
+            } catch (e) { }
 
             setSelectedEp(epToSelect);
             // Don't set embedUrl here — wait for user to click play
@@ -89,9 +89,9 @@ export default function MovieDetailPage() {
         <div className="player-section" style={{ marginTop: 80 }}>
           <div className="player-container">
             {embedUrl.includes('.m3u8') ? (
-              <VideoPlayer 
-                url={embedUrl} 
-                movieSlug={movie.slug} 
+              <VideoPlayer
+                url={embedUrl}
+                movieSlug={movie.slug}
                 episodeId={selectedEp?.id || 0}
                 poster={movie.backdrop_url || movie.poster_url}
               />
