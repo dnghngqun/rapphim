@@ -11,10 +11,26 @@ interface VideoPlayerProps {
 }
 
 export default function VideoPlayer({ url, movieSlug, episodeId, poster }: VideoPlayerProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const lastSavedRef = useRef<number>(0);
   const lastTapRef = useRef<number>(0);
+
+  const toggleFullscreen = async () => {
+    const elem = wrapperRef.current as any;
+    if (!elem) return;
+
+    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+      if (elem.requestFullscreen) await elem.requestFullscreen();
+      else if (elem.webkitRequestFullscreen) await elem.webkitRequestFullscreen();
+      else if (elem.msRequestFullscreen) await elem.msRequestFullscreen();
+    } else {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if ((document as any).webkitExitFullscreen) await (document as any).webkitExitFullscreen();
+      else if ((document as any).msExitFullscreen) await (document as any).msExitFullscreen();
+    }
+  };
 
   const skip = (amount: number) => {
     if (videoRef.current) {
@@ -138,7 +154,7 @@ export default function VideoPlayer({ url, movieSlug, episodeId, poster }: Video
   };
 
   return (
-    <div style={{ width: '100%', height: '100%', backgroundColor: '#000', display: 'flex', flexDirection: 'column' }}>
+    <div ref={wrapperRef} style={{ width: '100%', height: '100%', backgroundColor: '#000', display: 'flex', flexDirection: 'column' }}>
       <div 
         style={{ flex: 1, position: 'relative', display: 'flex', justifyContent: 'center', minHeight: 0 }}
         onDoubleClick={handleDoubleClick}
@@ -147,6 +163,7 @@ export default function VideoPlayer({ url, movieSlug, episodeId, poster }: Video
         <video
           ref={videoRef}
           controls
+          controlsList="nofullscreen"
           poster={poster}
           onTimeUpdate={handleTimeUpdate}
           playsInline
@@ -154,35 +171,128 @@ export default function VideoPlayer({ url, movieSlug, episodeId, poster }: Video
         />
       </div>
       <div style={{ 
-        height: '50px', 
-        background: '#12121a', 
-        borderTop: '1px solid rgba(255,255,255,0.05)', 
+        padding: '16px', 
+        background: 'rgba(18, 18, 26, 0.85)', 
+        backdropFilter: 'blur(20px)', 
+        borderTop: '1px solid rgba(255,255,255,0.08)', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
-        gap: '24px' 
+        gap: '20px',
+        borderRadius: '12px 12px 0 0'
       }}>
         <button 
           onClick={() => skip(-5)}
           className="skip-btn"
-          style={{ padding: '6px 16px', background: 'rgba(255,255,255,0.05)', color: '#a0a0b8', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', transition: 'all 0.2s' }}
-          onMouseOver={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-          onMouseOut={e => { e.currentTarget.style.color = '#a0a0b8'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+          style={{ 
+            padding: '12px 20px', 
+            background: 'rgba(255,255,255,0.1)', 
+            backdropFilter: 'blur(10px)', 
+            color: '#f0f0f5', 
+            border: '1px solid rgba(255,255,255,0.15)', 
+            borderRadius: '12px', 
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            fontSize: '0.9rem', 
+            fontWeight: '500',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+          }}
+          onMouseOver={e => { 
+            e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; 
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.3)';
+          }}
+          onMouseOut={e => { 
+            e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; 
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+          }}
+          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
           title="Tua lùi 5s (Phím mũi tên trái)"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          Lùi 5s
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          <span>Lùi 5s</span>
         </button>
         <button 
           onClick={() => skip(5)}
           className="skip-btn"
-          style={{ padding: '6px 16px', background: 'rgba(255,255,255,0.05)', color: '#a0a0b8', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', transition: 'all 0.2s' }}
-          onMouseOver={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-          onMouseOut={e => { e.currentTarget.style.color = '#a0a0b8'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+          style={{ 
+            padding: '12px 20px', 
+            background: 'rgba(255,255,255,0.1)', 
+            backdropFilter: 'blur(10px)', 
+            color: '#f0f0f5', 
+            border: '1px solid rgba(255,255,255,0.15)', 
+            borderRadius: '12px', 
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            fontSize: '0.9rem', 
+            fontWeight: '500',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+          }}
+          onMouseOver={e => { 
+            e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; 
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.3)';
+          }}
+          onMouseOut={e => { 
+            e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; 
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+          }}
+          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
           title="Tua tiến 5s (Phím mũi tên phải)"
         >
-          Tiến 5s
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          <span>Tiến 5s</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+        </button>
+
+        <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.15)' }}></div>
+
+        <button 
+          onClick={toggleFullscreen}
+          className="fullscreen-btn"
+          style={{ 
+            padding: '12px 20px', 
+            background: 'var(--accent, #7c5cfc)', 
+            backdropFilter: 'blur(10px)', 
+            color: '#fff', 
+            border: 'none', 
+            borderRadius: '12px', 
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            fontSize: '0.9rem', 
+            fontWeight: '600',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 4px 12px rgba(124, 92, 252, 0.3)'
+          }}
+          onMouseOver={e => { 
+            e.currentTarget.style.background = 'var(--accent-light, #9d82ff)'; 
+            e.currentTarget.style.transform = 'scale(1.05)';
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(124, 92, 252, 0.4)';
+          }}
+          onMouseOut={e => { 
+            e.currentTarget.style.background = 'var(--accent, #7c5cfc)'; 
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 92, 252, 0.3)';
+          }}
+          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+          title="Toàn màn hình"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          <span>Phóng to</span>
         </button>
       </div>
     </div>
