@@ -162,6 +162,7 @@ CREATE INDEX IF NOT EXISTS idx_movies_fulltext ON movies USING gin(to_tsvector('
 CREATE INDEX IF NOT EXISTS idx_episodes_movie ON episodes(movie_id);
 CREATE INDEX IF NOT EXISTS idx_episode_servers_episode ON episode_servers(episode_id);
 CREATE INDEX IF NOT EXISTS idx_episode_servers_working ON episode_servers(is_working) WHERE is_working = TRUE;
+CREATE INDEX IF NOT EXISTS idx_episode_servers_type ON episode_servers(server_type) WHERE server_type IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_crawl_logs_source ON crawl_logs(source_id);
 CREATE INDEX IF NOT EXISTS idx_genres_slug ON genres(slug);
 CREATE INDEX IF NOT EXISTS idx_countries_slug ON countries(slug);

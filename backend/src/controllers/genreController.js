@@ -32,4 +32,20 @@ async function getCountries(req, res) {
   }
 }
 
-module.exports = { getGenres, getCountries };
+/** GET /api/server-types */
+async function getServerTypes(req, res) {
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT server_type
+      FROM episode_servers
+      WHERE server_type IS NOT NULL
+      ORDER BY server_type ASC
+    `);
+    const types = result.rows.map(row => row.server_type);
+    res.json({ status: true, items: types });
+  } catch (err) {
+    res.status(500).json({ status: false, error: 'Internal server error' });
+  }
+}
+
+module.exports = { getGenres, getCountries, getServerTypes };

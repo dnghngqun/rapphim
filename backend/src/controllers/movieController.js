@@ -13,17 +13,20 @@ const removeVietnameseTones = (str) => {
 
 /**
  * GET /api/movies
- * Query params: page, limit, type, genre, country, year, sort, search
+ * Query params: page, limit, type, genre, country, year, sort, search, server_types
  */
 async function getMovies(req, res) {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 24));
     const offset = (page - 1) * limit;
-    const { type, genre, country, year, sort, search } = req.query;
+    const { type, genre, country, year, sort, search, server_types } = req.query;
+
+    // Parse server_types (comma-separated string to array)
+    const serverTypesArray = server_types ? server_types.split(',').map(t => t.trim()).filter(Boolean) : [];
 
     let query = `
-      SELECT m.*, 
+      SELECT DISTINCT m.*,
         array_agg(DISTINCT g.name) FILTER (WHERE g.name IS NOT NULL) as genres,
         array_agg(DISTINCT g.slug) FILTER (WHERE g.slug IS NOT NULL) as genre_slugs,
         array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL) as countries,
@@ -34,6 +37,14 @@ async function getMovies(req, res) {
       LEFT JOIN movie_countries mc ON m.id = mc.movie_id
       LEFT JOIN countries c ON mc.country_id = c.id
     `;
+
+    // Add JOINs for server_types filter
+    if (serverTypesArray.length > 0) {
+      query += `
+      INNER JOIN episodes e ON m.id = e.movie_id
+      INNER JOIN episode_servers es ON e.id = es.episode_id
+      `;
+    }
 
     const conditions = [];
     const params = [];
@@ -63,6 +74,10 @@ async function getMovies(req, res) {
       conditions.push(`(m.title ILIKE $${paramIndex} OR m.original_title ILIKE $${paramIndex} OR REPLACE(m.slug, 'y', 'i') ILIKE $${paramIndex + 1})`);
       params.push(likeSearchStr, slugSearchStr);
       paramIndex += 2;
+    }
+    if (serverTypesArray.length > 0) {
+      conditions.push(`es.server_type = ANY($${paramIndex++})`);
+      params.push(serverTypesArray);
     }
 
     if (conditions.length > 0) {
@@ -111,7 +126,12 @@ async function getMovies(req, res) {
       countParams.push(likeSearchStr, slugSearchStr);
       cpi += 2;
     }
-    
+    if (serverTypesArray.length > 0) {
+      countQuery += ' INNER JOIN episodes e ON m.id = e.movie_id INNER JOIN episode_servers es ON e.id = es.episode_id';
+      countConditions.push(`es.server_type = ANY($${cpi++})`);
+      countParams.push(serverTypesArray);
+    }
+
     if (countConditions.length > 0) countQuery += ' WHERE ' + countConditions.join(' AND ');
 
     const [moviesResult, countResult] = await Promise.all([

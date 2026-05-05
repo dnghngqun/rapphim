@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getGenres, getCountries } = require('../controllers/genreController');
+const { getGenres, getCountries, getServerTypes } = require('../controllers/genreController');
 const { getMovies } = require('../controllers/movieController');
 const { cacheMiddleware } = require('../middlewares/cache');
 
@@ -17,5 +17,8 @@ router.get('/countries/:slug/movies', cacheMiddleware(5), (req, res) => {
   req.query.country = req.params.slug;
   return getMovies(req, res);
 });
+
+// Server types route (cache for 10 mins)
+router.get('/server-types', cacheMiddleware(10), getServerTypes);
 
 module.exports = router;
